@@ -6,12 +6,13 @@ import DeleteConfirmation from './components/DeleteConfirmation.jsx';
 import logoImg from './assets/logo.png';
 import AvailablePlaces from './components/AvailablePlaces.jsx';
 import { updateUserPlaces } from './http.js';
+import ErrorMsg from './components/Error.jsx';
 
 function App() {
   const selectedPlace = useRef();
 
   const [userPlaces, setUserPlaces] = useState([]);
-
+  const [errorUpdatingPlaces, setErrorUpdatingPlaces] = useState(null);
   const [modalIsOpen, setModalIsOpen] = useState(false);
 
   function handleStartRemovePlace(place) {
@@ -24,6 +25,10 @@ function App() {
   }
 
   async function handleSelectPlace(selectedPlace) {
+    // If using this code instead of the line below, it would be best to use
+    // a "loading" spinner to show the app is working on the request.
+    // await updateUserPlaces([selectedPlace, ...userPlaces]);
+
     setUserPlaces((prevPickedPlaces) => {
       if (!prevPickedPlaces) {
         prevPickedPlaces = [];
@@ -35,9 +40,12 @@ function App() {
     });
 
     try {
+      // using 'optimistic update' to update the State immediately while the HTTP request
+      // is processed behind the scenes so no need for a "loading" spinner in this case.
       await updateUserPlaces([selectedPlace, ...userPlaces]);
     } catch(error) {
-      //... show some error here.
+      setUserPlaces(userPlaces); // if an error occurs, revert to the previous state.
+      setErrorUpdatingPlaces({ message: error.message || 'Failed to update places.' });
     }
   }
 
@@ -49,8 +57,18 @@ function App() {
     setModalIsOpen(false);
   }, []);
 
+  function handleError() {
+    setErrorUpdatingPlaces(null);
+  }
+
   return (
     <>
+      <Modal open={errorUpdatingPlaces} onClose={handleError}>
+        {errorUpdatingPlaces && (
+          <ErrorMsg title="An error occurred!" message={errorUpdatingPlaces.message} onConfirm={handleError}/>
+        )}
+      </Modal>
+
       <Modal open={modalIsOpen} onClose={handleStopRemovePlace}>
         <DeleteConfirmation
           onCancel={handleStopRemovePlace}
